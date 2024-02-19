@@ -57,12 +57,10 @@ Example usage:
 import json
 from time import time
 from base64 import b64encode
-from getpass import getpass
 import requests
 
 from steam.enums.proto import EAuthSessionGuardType
 from steam.steamid import SteamID
-from steam.utils.web import generate_session_id
 from steam.core.crypto import rsa_publickey, pkcs1v15_encrypt
 
 intBase = int
@@ -242,6 +240,8 @@ class WebAuth(object):
         session_id = self.session.cookies.get_dict().get('sessionid')
         finalized_data = {'nonce': self.refresh_token, 'sessionid': session_id, 'redir': redir}
         url = "https://login.steampowered.com/jwt/finalizelogin"
+        # set-cookie steamRefresh_steam
+        self.session.post(url, data=finalized_data)
 
     def _finalizeLogin(self):
         self.session_id = self.session.cookies.get_dict().get('sessionid')
@@ -322,6 +322,7 @@ class WebAuth(object):
                     self._update_login_token(email_code,
                                              EAuthSessionGuardType.EmailCode)
                     self._pollLoginStatus()
+                    self._finalizeLoginRequest()
                     self._finalizeLogin()
                     return self.session
 
@@ -332,6 +333,7 @@ class WebAuth(object):
                 # Errors can be only like wrong cookies. (Theoretically)
                 raise WebAuthException("Something invalid went. Try again later.")
         self._pollLoginStatus()
+        self._finalizeLoginRequest()
         self._finalizeLogin()
 
         return self.session
